@@ -65,10 +65,7 @@ A dedicated, persistent workspace located right on your tracker page:
 Works on all Chromium browsers: **Google Chrome, Microsoft Edge, Brave, Opera, Arc**, and others.
 
 1. **Download / Clone** this repository:
-   - Click **Code** → **Download ZIP**, then extract it, or:
-   ```bash
-   [git clone https://github.com/vighnesh/job-filler.git](https://github.com/thevighneshpawar/auto-job-application-fillier-tracker.git)
-   ```
+   - Click **Code** → **Download ZIP**, then extract it.
 
 2. Open your browser and navigate to the extensions management page:
    - Chrome: `chrome://extensions`
