@@ -1,0 +1,302 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: dark;
+      --bg: #0d0f14;
+      --surface: #161a24;
+      --surface2: #1e2433;
+      --border: rgba(255,255,255,0.07);
+      --accent: #6366f1;
+      --accent-glow: rgba(99,102,241,0.35);
+      --accent2: #22d3ee;
+      --green: #10b981;
+      --green-bg: rgba(16,185,129,0.1);
+      --green-border: rgba(16,185,129,0.25);
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      width: 310px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    /* Top gradient banner */
+    .header-band {
+      background: linear-gradient(135deg, #1e1b4b 0%, #0d0f14 60%);
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .header-band::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+    .logo-text {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+    .logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+      font-weight: 500;
+    }
+
+    /* Main body */
+    .body-pad {
+      padding: 14px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    button {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s, opacity 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.15s;
+    }
+    button:hover::after { background: rgba(255,255,255,0.06); }
+    button:active { transform: scale(0.975); }
+
+    #fill {
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(99,102,241,0.4);
+      font-size: 13.5px;
+    }
+    #fill:hover {
+      box-shadow: 0 6px 22px rgba(99,102,241,0.55);
+    }
+    .fill-shortcut {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.55);
+      background: rgba(255,255,255,0.12);
+      padding: 2px 6px;
+      border-radius: 5px;
+      margin-left: 2px;
+    }
+
+    #addTracker {
+      background: var(--green-bg);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+    }
+    #addTracker:hover {
+      background: rgba(16,185,129,0.17);
+      box-shadow: 0 0 14px rgba(16,185,129,0.18);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .btn-row button { font-size: 12.5px; }
+
+    #opts {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    #opts:hover { background: #252d3d; }
+
+    #tracker {
+      background: var(--surface2);
+      color: var(--accent2);
+      border: 1px solid rgba(34,211,238,0.2);
+    }
+    #tracker:hover {
+      background: rgba(34,211,238,0.08);
+      box-shadow: 0 0 12px rgba(34,211,238,0.15);
+    }
+
+    /* Auto-fill toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .toggle-row:hover {
+      background: var(--surface2);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .toggle-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      flex: 1;
+      white-space: nowrap;
+    }
+    /* Custom toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 32px;
+      min-width: 32px;
+      max-width: 32px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #2d3748;
+      border-radius: 99px;
+      transition: background 0.2s, border-color 0.2s;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      height: 12px;
+      width: 12px;
+      left: 2px;
+      top: 2px;
+      background: #94a3b8;
+      border-radius: 50%;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+    }
+    .switch input:checked + .slider {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .switch input:checked + .slider::before {
+      transform: translateX(14px);
+      background: #ffffff;
+    }
+
+    /* Status bar */
+    #status {
+      font-size: 11.5px;
+      line-height: 1.5;
+      min-height: 16px;
+      padding: 0 2px;
+      color: var(--muted);
+    }
+    .ok   { color: var(--green) !important; }
+    .warn { color: #fbbf24 !important; }
+    .muted{ color: var(--muted) !important; }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-band">
+    <div class="logo-row">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">Job Filler</div>
+        <div class="logo-sub">AI-powered form autofill</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-pad">
+    <button id="fill">
+      <span>⚡ Fill this page</span>
+      <span class="fill-shortcut">Alt+Shift+F</span>
+    </button>
+
+    <button id="addTracker">
+      ✦ Add to Tracker
+    </button>
+
+    <div class="divider"></div>
+
+    <div class="btn-row">
+      <button id="opts">✏️ My Details</button>
+      <button id="tracker">📊 Tracker</button>
+    </div>
+
+    <div class="toggle-row" id="toggleRow">
+      <span class="toggle-text">Auto-fill on form load</span>
+      <label class="switch" id="switchLabel">
+        <input type="checkbox" id="auto">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

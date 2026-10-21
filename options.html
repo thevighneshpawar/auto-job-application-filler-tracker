@@ -1,0 +1,380 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Filler – My Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: dark;
+      --bg: #080b12;
+      --bg2: #0d1117;
+      --surface: #111827;
+      --surface2: #161e2e;
+      --surface3: #1c2540;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.3);
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --text3: #64748b;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13.5px;
+      line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+
+    /* ── Top rainbow bar ── */
+    .top-bar {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #22d3ee, var(--green));
+    }
+
+    .page {
+      max-width: 940px;
+      margin: 0 auto;
+      padding: 32px 32px 60px;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .header-icon {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, var(--accent), #22d3ee);
+      border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 24px var(--accent-glow);
+      flex-shrink: 0;
+    }
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .page-header .sub {
+      font-size: 12.5px;
+      color: var(--text3);
+      margin-top: 3px;
+    }
+
+    /* ── Section Cards ── */
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    section:hover { border-color: var(--border2); }
+
+    h2 {
+      font-size: 10.5px;
+      margin: 0 0 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text3);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Grid & Layout ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 18px;
+    }
+    .full { grid-column: 1 / -1; }
+
+    /* ── Labels & Inputs ── */
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text2);
+      margin-bottom: 5px;
+      letter-spacing: 0.03em;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input::placeholder, textarea::placeholder { color: var(--text3); }
+    select option {
+      background-color: #161e2e;
+      color: #f1f5f9;
+      padding: 8px 12px;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    input[type=checkbox] {
+      width: 16px; height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      padding: 0;
+    }
+    input[type=file] {
+      width: auto;
+      background: transparent;
+      border: 1px dashed var(--border2);
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 12.5px;
+    }
+
+    /* ── Row layout ── */
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .check-row label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+
+    /* ── Buttons ── */
+    button {
+      padding: 9px 16px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    button:active { transform: scale(0.97); }
+
+    /* default = accent primary */
+    button:not(.g):not(.r):not(.sm-link) {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      color: #fff;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+    button:not(.g):not(.r):not(.sm-link):hover {
+      box-shadow: 0 6px 20px rgba(99,102,241,0.5);
+      opacity: 0.95;
+    }
+
+    button.g {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    button.g:hover { background: var(--surface3); color: var(--text); }
+
+    button.r {
+      background: rgba(239,68,68,0.12);
+      color: #f87171;
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    button.r:hover { background: rgba(239,68,68,0.2); }
+
+    button.sm {
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+
+    /* ── Note text ── */
+    .note {
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.6;
+    }
+
+    /* ── Repeatable Cards ── */
+    .rep-section {}
+    .rep-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      background: var(--surface2);
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .rep-card:hover { border-color: var(--border2); }
+    .rep-card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .rep-card .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-light);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rep-card .remove-btn {
+      background: rgba(239,68,68,0.12);
+      color: #f87171;
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 11.5px;
+      cursor: pointer;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .rep-card .remove-btn:hover { background: rgba(239,68,68,0.22); }
+
+    .add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(16,185,129,0.07);
+      color: #34d399;
+      border: 1.5px dashed rgba(16,185,129,0.3);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      font-family: inherit;
+      margin-top: 6px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .add-btn:hover {
+      background: rgba(16,185,129,0.13);
+      border-color: rgba(16,185,129,0.5);
+    }
+
+    /* ── Saved Toast ── */
+    #saved {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      background: rgba(16,185,129,0.15);
+      color: #34d399;
+      border: 1px solid rgba(16,185,129,0.3);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    /* ── Import info ── */
+    #importInfo { margin-top: 10px; line-height: 1.6; }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .page { padding: 20px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar"></div>
+
+  <div class="page">
+    <div class="page-header">
+      <div class="header-icon">✏️</div>
+      <div>
+        <h1>Job Filler — My Details</h1>
+        <div class="sub">Everything is stored only in this browser (chrome.storage.local). Nothing is ever sent anywhere. Saved automatically.</div>
+      </div>
+    </div>
+
+    <section>
+      <h2>Resume</h2>
+      <div class="row">
+        <input type="file" id="resumeFile" accept=".pdf,.doc,.docx" style="width:auto">
+        <span id="resumeInfo" class="note"></span>
+        <button class="g" id="resumeClear">Remove</button>
+        <button class="g" id="reparse">Re-read &amp; overwrite fields</button>
+      </div>
+      <div id="importInfo" class="note"></div>
+      <div class="note" style="margin-top:8px;">Upload once: your details below are filled from it (PDF or DOCX, read locally in this browser), and the file is attached automatically to upload boxes labelled Resume / CV.</div>
+    </section>
+
+    <div id="sections"></div>
+
+    <section>
+      <h2>Backup</h2>
+      <div class="row">
+        <button class="g" id="exp">⬇ Export details (JSON)</button>
+        <button class="g" id="imp">⬆ Import</button>
+        <input type="file" id="impFile" accept=".json" hidden>
+        <button class="r" id="wipe">🗑 Delete all my data</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="saved">✓ Saved</div>
+
+  <script src="schema.js"></script>
+  <script src="parse.js"></script>
+  <script type="module" src="options.js"></script>
+</body>
+</html>
