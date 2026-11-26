@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job Filler",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Auto-fill job application forms from your saved profile. Track applications with a built-in dashboard. 100% offline — no servers, no tracking, no data ever leaves your browser.",
   "icons": {
     "16": "icons/icon16.png",
@@ -35,7 +35,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["schema.js", "content.js"],
+      "js": ["schema.js", "answers.js", "content.js"],
       "all_frames": true,
       "match_about_blank": true,
       "run_at": "document_idle"

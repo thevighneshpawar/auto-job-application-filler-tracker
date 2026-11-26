@@ -68,7 +68,13 @@
     const li = /(?:https?:\/\/)?(?:www\.|[a-z]{2}\.)?linkedin\.com\/(?:in|pub)\/[A-Za-z0-9\-_%]+/i.exec(all); if (li) out.linkedin = (/^http/i.test(li[0]) ? "" : "https://") + li[0].replace(/^http:/i, "https:");
     const gh = /(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9-]+)/i.exec(all); if (gh && !/^(orgs|topics|features)$/i.test(gh[1])) out.github = "https://github.com/" + gh[1];
     const urls = noEm.match(/\b(?:https?:\/\/)?(?:www\.)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[a-z]{2,}(?:\/[^\s,;)|]*)?/gi) || [];
-    const site = urls.find((u) => !/linkedin|github|gmail|yahoo|outlook|hotmail|\.(pdf|docx?)$/i.test(u) && (/^(https?:|www\.)/i.test(u) || /\.(vercel\.app|netlify\.app|github\.io|web\.app|dev|io|me|tech|xyz)\b/i.test(u)));
+    const site = urls.find((u) => {
+      if (/linkedin|github|gmail|yahoo|outlook|hotmail|\.(pdf|docx?)$/i.test(u)) return false;
+      if (/^(https?:|www\.)/i.test(u)) return true;
+      // "B.Tech" and "M.Sc" are degrees, not websites.
+      if (/^[A-Za-z]\./.test(u)) return false;
+      return /\.(?:vercel\.app|netlify\.app|github\.io|web\.app|dev|io|me|tech|xyz)\b/i.test(u);
+    });
     if (site) out.portfolio = /^https?:/i.test(site) ? site : "https://" + site;
     // name
     const BADNAME = /resume|curriculum|vitae|\bcv\b|profile|summary|objective|engineer|developer|email|phone|contact|address|github|linkedin|student|fresher/i;
@@ -115,15 +121,20 @@
     const exp = sec.experience || [];
     const yrs = experienceYears(exp); if (yrs) out.experience = yrs;
     const TITLE = /engineer|developer|intern|analyst|consultant|manager|associate|designer|trainee|architect|lead|programmer|tester|specialist|administrator|executive/i;
+    const splitRole = (s) => s.split(/\s*[|,@]\s*|\s+at\s+|\s+[-–—]\s+/).map((x) => x.trim()).filter(Boolean);
     const cand = exp.map(unbullet).filter((l) => l.length > 2 && l.length < 90 && !/^[•●▪\-*]/.test(l)).slice(0, 4).map(stripDates).filter(Boolean).slice(0, 2);
     if (cand.length === 2 && exp.length) {
       const [a, b] = cand, ta = TITLE.test(a), tb = TITLE.test(b);
-      const split = (s) => s.split(/\s*[|,@]\s*|\s+at\s+|\s+[-–—]\s+/).map((x) => x.trim()).filter(Boolean);
-      if (ta !== tb) { out.jobTitle = split(ta ? a : b)[0]; out.currentCompany = split(ta ? b : a)[0]; }
-      else if (/\s(?:at|@)\s|\s[|–—-]\s/.test(a)) { const p = split(a); if (p.length >= 2) { const ti = TITLE.test(p[0]); out.jobTitle = ti ? p[0] : p[1]; out.currentCompany = ti ? p[1] : p[0]; } }
+      if (ta !== tb) { out.jobTitle = splitRole(ta ? a : b)[0]; out.currentCompany = splitRole(ta ? b : a)[0]; }
+      else if (/\s(?:at|@)\s|\s[|–—-]\s/.test(a)) { const p = splitRole(a); if (p.length >= 2) { const ti = TITLE.test(p[0]); out.jobTitle = ti ? p[0] : p[1]; out.currentCompany = ti ? p[1] : p[0]; } }
     }
-    const sk = (sec.skills || []).map((l) => unbullet(l).replace(/^[A-Za-z &/+]{2,30}:\s*/, "")).filter(Boolean);
-    if (sk.length) out.skills = [...new Set(sk.join(", ").split(/\s*,\s*/).filter(Boolean))].join(", ").slice(0, 400);
+    if (!out.jobTitle && cand[0] && /\s(?:at|@)\s/.test(cand[0])) {
+      const p = splitRole(cand[0]);
+      if (p.length >= 2) { const ti = TITLE.test(p[0]); out.jobTitle = ti ? p[0] : p[1]; out.currentCompany = ti ? p[1] : p[0]; }
+    }
+    const notLink = (l) => l && !/https?:\/\//i.test(l) && !/\b(?:linkedin|github)\.com\b/i.test(l) && !/^\/\//.test(l);
+    const sk = (sec.skills || []).map(unbullet).filter(notLink).map((l) => l.replace(/^(?!https?:)[A-Za-z][A-Za-z &/+]{0,28}:\s*/, "")).filter(notLink);
+    if (sk.length) out.skills = [...new Set(sk.join(", ").split(/\s*,\s*/).map((s) => s.trim()).filter(notLink))].join(", ").slice(0, 400);
     if (sec.summary && sec.summary.length) out.summary = sec.summary.map(unbullet).join(" ").slice(0, 700);
     if (sec.projects && sec.projects.length) out.project = sec.projects.slice(0, 5).map(unbullet).join(". ").replace(/\.\./g, ".").slice(0, 600);
     Object.keys(out).forEach((k) => { if (!out[k]) delete out[k]; });

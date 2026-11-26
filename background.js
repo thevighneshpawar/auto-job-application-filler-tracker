@@ -16,8 +16,8 @@ chrome.runtime.onMessage.addListener((m, sender, sendResponse) => {
     return true;
   }
   if (m && m.type === "track_application" && m.tracking) {
-    saveApplication(m.tracking).then(() => {
-      sendResponse({ ok: true });
+    saveApplication(m.tracking).then((res) => {
+      sendResponse(res || { ok: true });
     });
     return true; // Keep sendResponse open for async
   }
@@ -36,8 +36,9 @@ async function saveApplication(item) {
       if (item.jobTitle && item.jobTitle !== "Job Application") {
         apps[existingIdx].jobTitle = item.jobTitle;
       }
+      if (item.followUp && !apps[existingIdx].followUp) apps[existingIdx].followUp = item.followUp;
       await chrome.storage.local.set({ applications: apps });
-      return { ok: true, isDupe: true };
+      return { ok: true, duplicate: true };
     }
     apps.unshift({
       date: item.date || new Date().toISOString(),
@@ -45,10 +46,11 @@ async function saveApplication(item) {
       jobTitle: item.jobTitle || "Job Application",
       url: item.url || "",
       status: item.status || "Applied",
-      notes: item.notes || ""
+      notes: item.notes || "",
+      followUp: item.followUp || ""
     });
     await chrome.storage.local.set({ applications: apps });
-    return { ok: true, isDupe: false };
+    return { ok: true, duplicate: false };
   } catch (e) {
     console.error("Failed to save application:", e);
     return { ok: false, error: e.message };

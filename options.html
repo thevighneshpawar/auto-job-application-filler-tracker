@@ -3,8 +3,6 @@
 <head>
   <meta charset="utf-8">
   <title>Job Filler – My Details</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,15 +21,15 @@
       --green: #10b981;
       --red: #ef4444;
       --amber: #f59e0b;
-      --text: #e2e8f0;
-      --text2: #94a3b8;
-      --text3: #64748b;
+      --text: #f1f5f9;
+      --text2: #cbd5e1;
+      --text3: #b6c2d4;
       --radius: 14px;
       --radius-sm: 8px;
     }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       font-size: 13.5px;
       line-height: 1.5;
       background: var(--bg);
@@ -59,8 +57,14 @@
     .page-header {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 16px;
-      margin-bottom: 32px;
+      margin-bottom: 22px;
+    }
+    .page-header .grow { flex: 1; min-width: 0; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid #c7d2fe;
+      outline-offset: 2px;
     }
     .header-icon {
       width: 46px; height: 46px;
@@ -236,10 +240,73 @@
 
     /* ── Note text ── */
     .note {
-      font-size: 12px;
-      color: var(--text3);
+      font-size: 12.5px;
+      color: var(--text2);
       line-height: 1.6;
     }
+    .note.err, .note.ok {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+    }
+    .note.err {
+      color: #fee2e2;
+      background: rgba(239,68,68,0.14);
+      border: 1px solid rgba(248,113,113,0.5);
+    }
+    .note.ok {
+      color: #d1fae5;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(110,231,183,0.4);
+    }
+
+    .complete-card {
+      background: var(--surface);
+      border: 1px solid rgba(251,191,36,0.45);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+    .complete-card.bad { border-color: rgba(248,113,113,0.55); }
+    .complete-card.good { border-color: rgba(52,211,153,0.5); }
+    .complete-card .rowline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .complete-card .miss { margin-top: 6px; color: #fde68a; font-size: 12.5px; line-height: 1.5; }
+    .complete-card.good .miss { color: #d1fae5; }
+    .complete-bar { height: 6px; border-radius: 99px; background: #334155; margin-top: 8px; overflow: hidden; }
+    .complete-bar > span { display: block; height: 100%; width: 0; background: #fbbf24; }
+    .complete-card.good .complete-bar > span { background: #34d399; }
+    .complete-card.bad .complete-bar > span { background: #f87171; }
+
+    .subhead {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 4px 0;
+    }
+    .rule { border-top: 1px solid var(--border2); margin: 8px 0; }
+
+    .answer-preview {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 12.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .answer-preview strong { display: block; margin-bottom: 6px; }
+    .answer-preview .preview-src { margin-top: 8px; color: var(--text2); font-size: 12px; }
+    .answer-preview.empty { color: var(--text2); }
 
     /* ── Repeatable Cards ── */
     .rep-section {}
@@ -339,11 +406,18 @@
 
   <div class="page">
     <div class="page-header">
-      <div class="header-icon">✏️</div>
-      <div>
+      <div class="header-icon" aria-hidden="true">JF</div>
+      <div class="grow">
         <h1>Job Filler — My Details</h1>
-        <div class="sub">Everything is stored only in this browser (chrome.storage.local). Nothing is ever sent anywhere. Saved automatically.</div>
+        <div class="sub">Stored only in this browser. Nothing is sent anywhere. Changes save automatically.</div>
       </div>
+      <button class="g" id="openTracker" type="button">Open tracker</button>
+    </div>
+
+    <div id="completeCard" class="complete-card bad">
+      <div class="rowline"><span id="completeLabel">Profile</span><span id="completeMeta">0 of 8 ready</span></div>
+      <div class="complete-bar" aria-hidden="true"><span id="completeBar"></span></div>
+      <div class="miss" id="completeMiss">Add your name, email, and phone before filling applications.</div>
     </div>
 
     <section>
@@ -363,17 +437,20 @@
     <section>
       <h2>Backup</h2>
       <div class="row">
-        <button class="g" id="exp">⬇ Export details (JSON)</button>
-        <button class="g" id="imp">⬆ Import</button>
+        <button class="g" id="exp" type="button">Export details (JSON)</button>
+        <button class="g" id="imp" type="button">Import</button>
         <input type="file" id="impFile" accept=".json" hidden>
-        <button class="r" id="wipe">🗑 Delete all my data</button>
+        <button class="r" id="wipe" type="button">Delete profile and resume</button>
       </div>
+      <div id="backupMsg" class="note"></div>
+      <div class="note" style="margin-top:8px;">Deleting here removes your profile and resume. Applications in the tracker stay until you clear them there.</div>
     </section>
   </div>
 
   <div id="saved">✓ Saved</div>
 
   <script src="schema.js"></script>
+  <script src="answers.js"></script>
   <script src="parse.js"></script>
   <script type="module" src="options.js"></script>
 </body>

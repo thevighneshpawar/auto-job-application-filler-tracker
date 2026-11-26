@@ -4,7 +4,7 @@
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-blue?logo=googlechrome&logoColor=white)](#installation)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-green)](#)
-[![Version](https://img.shields.io/badge/Version-2.1.0-blueviolet)](#)
+[![Version](https://img.shields.io/badge/Version-2.2.0-blueviolet)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline-brightgreen)](#privacy--security)
 
@@ -25,12 +25,13 @@ Then you lose track. *Did I apply to that company already? What role was it? Whe
 ## ✨ Features & Capabilities
 
 ### 🚀 Auto-Fill Any Job Application Form
-- **One click** (or keyboard shortcut `Alt+Shift+F`) fills every field on the page: name, email, phone, location, education, work experience, portfolio/GitHub/LinkedIn links, cover letter, and screening questions.
+- **Review, then fill.** The popup lists every value, including answers drafted for that job, before anything is written. Green outlines mark filled fields. You submit the form yourself.
+- **Keyboard shortcut** `Alt+Shift+F` fills the current page immediately (still without submitting): name, email, phone, location, education, work experience, portfolio/GitHub/LinkedIn links, cover letter, and screening questions.
 - **Framework-Aware Dispatch**: Simulates native user inputs and synthetic events for seamless compatibility with **React, Angular, Vue, and Workday's** strict form validators.
 - **Deep DOM & Shadow DOM Piercing**: Detects form fields inside nested containers, iframes, and open shadow roots.
 - **Smart Heuristics**: Matches fields using `name`, `id`, `placeholder`, `aria-label`, `<label>` tags, and surrounding context.
 - **Resume Auto-Attach**: Automatically attaches your uploaded resume file (PDF or DOCX) to file input fields labelled "Resume" or "CV".
-- **Dynamic Company Templating**: Use `{company}` in your cover letter or custom answers — it automatically resolves to the detected employer name.
+- **Per-job answers, offline.** Blank “why us”, cover letter, and strengths fields are drafted from your saved profile with local templates. `{company}` and `{role}` are filled from the job page. No API and no network.
 - **Non-Destructive & Safe**: Never overwrites existing user input, ignores hidden honeypot fields and sensitive security fields (SSN, Aadhaar, PAN, passwords), and **never auto-submits** forms.
 
 ### 📊 Application Tracker Dashboard
@@ -38,6 +39,7 @@ Then you lose track. *Did I apply to that company already? What role was it? Whe
   `Wishlist` → `Applied` → `Under Review` → `Assessment Ongoing` → `Assessment Complete` → `Phone Screen` → `Interview` → `Final Round` → `Offer` → `Counter Offer` → `Offer Accepted` → `Offer Declined` → `Rejected` → `Withdrawn` → `Ghosted`.
 - **Live Metrics Counter**: Real-time counter cards tracking Total Applications, Assessments & Reviews, Interviews in Progress, and Offers.
 - **Inline Status Management**: Color-coded, high-contrast status badge dropdowns designed for instant updates.
+- **Follow-up dates**: Each application stores a follow-up. Due and overdue items are called out at the top of the tracker.
 - **Per-Application Notes**: Record recruiter contacts, interview rounds, salary numbers, and take-home deadlines.
 - **Instant Search & Status Filtering**: Real-time multi-term search across company name, job title, and notes, paired with status filter counts.
 - **One-Click CSV Export**: Export your complete application pipeline into an Excel/Sheets-compatible `.csv` file.
@@ -74,7 +76,7 @@ Works on all Chromium browsers: **Google Chrome, Microsoft Edge, Brave, Opera, A
 
 3. Turn on **Developer mode** (toggle in the top-right corner).
 
-4. Click **"Load unpacked"** and select the extension directory (`jf2`, the folder containing `manifest.json`).
+4. Click **"Load unpacked"** and select this repository's folder (the folder that contains `manifest.json`).
 
 5. Click the extension puzzle icon in your toolbar and **pin Job Filler** for quick access.
 
@@ -85,22 +87,21 @@ Works on all Chromium browsers: **Google Chrome, Microsoft Edge, Brave, Opera, A
 ## 🚀 How to Use
 
 ### 1. Initial Setup (2 minutes)
-1. Click the Job Filler icon in your toolbar → **✏️ My Details**.
+1. Click the Job Filler icon in your toolbar → **My details**.
 2. Upload your resume (PDF or DOCX). Your contact info, links, education, and experience will populate automatically.
-3. Review and adjust any specific answers (notice period, expected compensation, work authorization, cover letter).
-4. Click **Save** (settings auto-save on change).
+3. Review and adjust any specific answers (notice period, expected compensation, work authorization, cover letter). Blank long answers can be drafted per job.
+4. The page saves as you type. The profile card shows what is still missing.
 
 ### 2. Auto-Filling Applications
 1. Open any job posting or application form (Greenhouse, Lever, Workday, etc.).
-2. Click the Job Filler icon → **"Fill this page"** (or press `Alt+Shift+F`).
-3. You can also turn on **"Auto-fill on form load"** in the popup to fill forms automatically as pages finish loading.
-4. Filled fields are highlighted with a green border for easy visual confirmation.
-5. Review the information, answer any unique custom questions, and click **Submit**.
+2. Click the Job Filler icon → **Review this page**. Check the company, role, saved values, and any drafted answers.
+3. Click **Fill these fields**. Filled fields are outlined in green. Submit the form yourself. `Alt+Shift+F` fills immediately and skips the popup review.
+4. **Auto-fill on form load** writes saved values as the form appears. It skips the review step and does not insert drafted answers.
 
 ### 3. Tracking Your Job Search
-1. After filling an application, click **"➕ Add to Tracker"** in the popup or in the floating toast notification.
-2. Open your tracker anytime: click the Job Filler icon → **📊 Tracker**.
-3. Update your application status as you hear back.
+1. After filling an application, click **Add to tracker** in the popup or in the page notice.
+2. Open your tracker anytime: click the Job Filler icon → **Open tracker**.
+3. Update the status as you hear back, and set a follow-up date so the tracker can remind you.
 4. Add notes, deadlines, and compensation details.
 5. Use the **Notes & Scratchpad** for recruiter communication prep and negotiation notes.
 6. Export your records anytime with **⬇ Export CSV**.
@@ -110,10 +111,11 @@ Works on all Chromium browsers: **Google Chrome, Microsoft Edge, Brave, Opera, A
 ## 🏗️ Project Architecture
 
 ```
-jf2/
+auto-job-application-filler-tracker/
 ├── manifest.json             # Manifest V3 extension configuration & permissions
 ├── background.js             # Background service worker (shortcuts, tracker storage, message routing)
 ├── content.js                # Core content script (DOM traversal, field heuristics, input simulation)
+├── answers.js                # Local per-job answer templates (no network)
 ├── schema.js                 # Unified profile schema, field definitions, and regex classifiers
 ├── parse.js                  # Heuristic resume parser (converts raw resume text into profile fields)
 ├── extract.js                # Local document text extractor (PDF & DOCX parsing)
@@ -157,7 +159,7 @@ Job Filler works universally on standard HTML forms and has specialized heuristi
 
 - 🛡️ **Zero Network Requests**: The extension makes zero API calls, carries zero analytics, and sends zero telemetry.
 - 💻 **Local Storage Only**: All data (profile, resumes, application history, notes) stays strictly on your computer in `chrome.storage.local`.
-- 🔐 **Zero Third-Party Dependency**: Document parsing (PDF.js) is bundled locally with no CDN or cloud endpoints.
+- 🔐 **Zero Third-Party Dependency**: Document parsing (PDF.js) is bundled locally with no CDN or cloud endpoints. The pages use system fonts, so type is not loaded from the network.
 - 🚫 **No Auto-Submit**: The extension will never automatically submit a form or agree to terms without your manual review.
 - 🛑 **Honeypot & Sensitive Field Shield**: Passwords, CAPTCHAs, SSNs, Aadhaar, and verification codes are explicitly blocked from auto-filling.
 

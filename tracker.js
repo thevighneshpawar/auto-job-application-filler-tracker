@@ -52,14 +52,56 @@ const STATUS_CONFIG = {
   "Ghosted":             { class: "s-ghosted",             icon: "👻" },
 };
 const STATUSES = Object.keys(STATUS_CONFIG);
+const CLOSED = new Set(["Rejected", "Withdrawn", "Offer Accepted", "Offer Declined", "Ghosted"]);
 
 let apps = [], filtered = [];
+
+function localDay(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return todayKey();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function isDue(a) {
+  const day = String(a.followUp || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || CLOSED.has(a.status)) return false;
+  return day <= todayKey();
+}
+function followMeta(a) {
+  const day = String(a.followUp || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { text: "—", cls: "" };
+  let cls = "";
+  if (!CLOSED.has(a.status)) {
+    const today = todayKey();
+    if (day < today) cls = "follow-overdue";
+    else if (day === today) cls = "follow-today";
+    else {
+      const diff = (new Date(day + "T12:00:00") - new Date(today + "T12:00:00")) / 86400000;
+      if (diff <= 7) cls = "follow-soon";
+    }
+  }
+  return { text: fmtDay(day), cls };
+}
+function fmtDay(day) {
+  const d = new Date(day + "T12:00:00");
+  if (isNaN(d.getTime())) return day;
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+}
 
 // Initialize
 async function load() {
   populateStatusSelects();
-
-  const data = await chrome.storage.local.get(["applications", "general_notes"]);
+  let data;
+  try {
+    data = await chrome.storage.local.get(["applications", "general_notes"]);
+  } catch (e) {
+    const body = document.getElementById("appBody");
+    if (body) body.innerHTML = `<tr><td colspan="8"><div class="empty err"><strong>Couldn't read saved applications.</strong><p>Reload this page. Your data is still in this browser.</p></div></td></tr>`;
+    return;
+  }
   apps = data.applications || [];
 
   // Setup General Notes
@@ -90,7 +132,8 @@ function updateFilterDropdown() {
   if (!filterSelect) return;
   const currentVal = filterSelect.value || "ALL";
 
-  filterSelect.innerHTML = `<option value="ALL">All Statuses </option>` +
+  filterSelect.innerHTML = `<option value="ALL">All statuses</option>` +
+    `<option value="DUE"${currentVal === "DUE" ? " selected" : ""}>Follow-ups due</option>` +
     STATUSES.map(
       (s) => `<option value="${s}"${s === currentVal ? " selected" : ""}>${STATUS_CONFIG[s].icon} ${s}</option>`
     ).join("");
@@ -117,6 +160,9 @@ function updateStats() {
   document.getElementById("statAssessment").textContent = assessments;
   document.getElementById("statInterviews").textContent = interviews;
   document.getElementById("statOffers").textContent = offers;
+  const dueEl = document.getElementById("statDue");
+  if (dueEl) dueEl.textContent = apps.filter(isDue).length;
+  renderDueBanner();
 }
 
 function render(query) {
@@ -127,7 +173,8 @@ function render(query) {
   const selectedStatus = filterSelect ? filterSelect.value : "ALL";
 
   filtered = apps.filter((a) => {
-    const matchStatus = (selectedStatus === "ALL") || (a.status === selectedStatus);
+    const matchStatus = selectedStatus === "DUE" ? isDue(a)
+      : (selectedStatus === "ALL" || a.status === selectedStatus);
     if (!matchStatus) return false;
 
     if (!q) return true;
@@ -136,7 +183,8 @@ function render(query) {
       (a.jobTitle || "") + " " +
       (a.url || "") + " " +
       (a.status || "") + " " +
-      (a.notes || "")
+      (a.notes || "") + " " +
+      (a.followUp || "")
     ).toLowerCase();
     return combined.includes(q);
   });
@@ -145,14 +193,19 @@ function render(query) {
 
   const body = document.getElementById("appBody");
   if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="7"><div class="empty">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      ${q || selectedStatus !== "ALL" ? "No applications match your filter." : "No applications logged yet. Click '＋ Add Application' or use 'Add to Tracker' on job postings!"}
-    </div></td></tr>`;
+    const filteredView = !!(q || (selectedStatus && selectedStatus !== "ALL"));
+    const title = selectedStatus === "DUE" && !q ? "No follow-ups due" : filteredView ? "No matches" : "No applications yet";
+    const copy = selectedStatus === "DUE" && !q
+      ? "When a follow-up date arrives, it shows up here and in the banner above."
+      : filteredView
+        ? "Try a different company, role, or status."
+        : "Add one here, or use Add to tracker on a job page. Set a follow-up so you know when to check back.";
+    body.innerHTML = `<tr><td colspan="8"><div class="empty"><strong>${title}</strong><p>${copy}</p></div></td></tr>`;
   } else {
     body.innerHTML = filtered.map((a) => {
       const idx = apps.indexOf(a);
       const conf = STATUS_CONFIG[a.status] || STATUS_CONFIG["Applied"];
+      const follow = followMeta(a);
       const noteHtml = a.notes && a.notes.trim()
         ? `<div class="notes-snippet" data-idx="${idx}" title="${esc(a.notes)}">📝 ${esc(a.notes)}</div>`
         : `<button type="button" class="btn-add-note" data-idx="${idx}">＋ Add note</button>`;
@@ -168,6 +221,7 @@ function render(query) {
               ${STATUSES.map((s) => `<option value="${s}"${s === a.status ? " selected" : ""}>${STATUS_CONFIG[s].icon} ${s}</option>`).join("")}
             </select>
           </td>
+          <td class="${follow.cls}">${esc(follow.text)}</td>
           <td class="notes-cell-container">${noteHtml}</td>
           <td class="actions-cell">
             <button type="button" class="btn-action-icon btn-edit" data-idx="${idx}" title="Edit details & notes">✏️</button>
@@ -181,6 +235,32 @@ function render(query) {
   if (countLabel) {
     countLabel.textContent = `${filtered.length} of ${apps.length} application${apps.length !== 1 ? "s" : ""}`;
   }
+}
+
+function renderDueBanner() {
+  const el = document.getElementById("dueBanner");
+  if (!el) return;
+  const due = apps.filter(isDue).slice().sort((a, b) => String(a.followUp).localeCompare(String(b.followUp)));
+  if (!due.length) { el.hidden = true; el.replaceChildren(); return; }
+  el.hidden = false;
+  el.replaceChildren();
+  const h = document.createElement("h3");
+  h.textContent = due.length + " follow-up" + (due.length === 1 ? "" : "s") + " due";
+  el.appendChild(h);
+  due.slice(0, 4).forEach((a) => {
+    const idx = apps.indexOf(a);
+    const row = document.createElement("div");
+    row.className = "due-row";
+    const label = document.createElement("div");
+    label.textContent = (a.company || "Company") + " — " + (a.jobTitle || "Role") + " — " + fmtDay(String(a.followUp).slice(0, 10));
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-gray";
+    btn.textContent = "Edit";
+    btn.addEventListener("click", () => openModal(idx));
+    row.append(label, btn);
+    el.appendChild(row);
+  });
 }
 
 function fmtDate(iso) {
@@ -233,11 +313,9 @@ appBody.addEventListener("change", async (e) => {
 
   const newStatus = e.target.value;
   apps[idx].status = newStatus;
-  const conf = STATUS_CONFIG[newStatus] || STATUS_CONFIG["Applied"];
-  e.target.className = `status-select ${conf.class}`;
-
   await save();
-  toast(`Status updated: ${newStatus} ✓`);
+  render();
+  toast("Status updated: " + newStatus);
 });
 
 appBody.addEventListener("click", async (e) => {
@@ -287,6 +365,7 @@ const modalUrl = document.getElementById("modalUrl");
 const modalDate = document.getElementById("modalDate");
 const modalStatus = document.getElementById("modalStatus");
 const modalNotes = document.getElementById("modalNotes");
+const modalFollowUp = document.getElementById("modalFollowUp");
 
 function openModal(idx = -1, focusNotes = false) {
   modalAppIdx.value = idx;
@@ -297,17 +376,19 @@ function openModal(idx = -1, focusNotes = false) {
     modalCompany.value = a.company || "";
     modalJobTitle.value = a.jobTitle || "";
     modalUrl.value = a.url || "";
-    modalDate.value = a.date ? a.date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    modalDate.value = a.date ? localDay(a.date) : todayKey();
     modalStatus.value = a.status || "Applied";
     modalNotes.value = a.notes || "";
+    if (modalFollowUp) modalFollowUp.value = a.followUp ? String(a.followUp).slice(0, 10) : "";
   } else {
     modalTitle.textContent = "Add Job Application";
     modalCompany.value = "";
     modalJobTitle.value = "";
     modalUrl.value = "";
-    modalDate.value = new Date().toISOString().slice(0, 10);
+    modalDate.value = todayKey();
     modalStatus.value = "Applied";
     modalNotes.value = "";
+    if (modalFollowUp) modalFollowUp.value = "";
   }
 
   appModal.style.display = "flex";
@@ -352,6 +433,7 @@ modalForm.addEventListener("submit", async (e) => {
   const dateIso = dateVal ? new Date(dateVal + "T12:00:00").toISOString() : new Date().toISOString();
   const status = modalStatus.value || "Applied";
   const notes = modalNotes.value.trim();
+  const followUp = modalFollowUp ? modalFollowUp.value : "";
 
   if (!company || !jobTitle) {
     alert("Please provide both Company Name and Job Title.");
@@ -365,7 +447,8 @@ modalForm.addEventListener("submit", async (e) => {
     apps[idx].date = dateIso;
     apps[idx].status = status;
     apps[idx].notes = notes;
-    toast("Application updated ✓");
+    apps[idx].followUp = followUp;
+    toast("Application updated");
   } else {
     apps.unshift({
       date: dateIso,
@@ -373,7 +456,8 @@ modalForm.addEventListener("submit", async (e) => {
       jobTitle,
       url,
       status,
-      notes
+      notes,
+      followUp
     });
     toast("Application added ✓");
   }
@@ -402,13 +486,14 @@ document.getElementById("btnExcel").addEventListener("click", () => {
     toast("No applications to export.");
     return;
   }
-  const headers = ["Date Applied", "Company", "Job Title", "URL", "Status", "Notes"];
+  const headers = ["Date Applied", "Company", "Job Title", "URL", "Status", "Follow-up", "Notes"];
   const rows = [...apps].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).map((a) => [
     fmtDate(a.date),
     a.company  || "",
     a.jobTitle || "",
     a.url      || "",
     a.status   || "Applied",
+    a.followUp || "",
     a.notes    || ""
   ]);
   const csvRows = [headers, ...rows].map((r) =>
@@ -505,5 +590,23 @@ chrome.storage.onChanged.addListener((changes) => {
     generalNotesBox.value = changes.general_notes.newValue || "";
   }
 });
+
+document.getElementById("openProfile").addEventListener("click", () => {
+  if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+  else window.open("options.html", "_blank");
+});
+
+const dueCard = document.getElementById("statDueCard");
+if (dueCard) {
+  const showDue = () => {
+    const filter = document.getElementById("statusFilter");
+    if (filter) filter.value = "DUE";
+    render();
+  };
+  dueCard.addEventListener("click", showDue);
+  dueCard.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showDue(); }
+  });
+}
 
 load();

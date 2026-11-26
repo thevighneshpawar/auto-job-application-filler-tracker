@@ -4,8 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Job Application Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -26,9 +24,9 @@
       --green: #10b981;
       --amber: #f59e0b;
       --red: #ef4444;
-      --text: #e2e8f0;
-      --text2: #94a3b8;
-      --text3: #64748b;
+      --text: #f1f5f9;
+      --text2: #cbd5e1;
+      --text3: #b6c2d4;
       --radius: 14px;
       --radius-sm: 8px;
     }
@@ -36,13 +34,16 @@
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       font-size: 13.5px;
       line-height: 1.5;
       background: var(--bg);
       color: var(--text);
-      min-width: 860px;
       min-height: 100vh;
+    }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+      outline: 2px solid #c7d2fe;
+      outline-offset: 2px;
     }
 
     /* ── Scrollbar ── */
@@ -66,6 +67,7 @@
       justify-content: space-between;
       margin-bottom: 28px;
       gap: 16px;
+      flex-wrap: wrap;
     }
     .header-left { display: flex; align-items: center; gap: 16px; }
     .header-icon {
@@ -126,6 +128,8 @@
     .stat-card.stat-amber::before  { background: linear-gradient(90deg, #f59e0b, #fcd34d); }
     .stat-card.stat-purple::before { background: linear-gradient(90deg, #a855f7, #c084fc); }
     .stat-card.stat-green::before  { background: linear-gradient(90deg, var(--green), #34d399); }
+    .stat-card.stat-due { cursor: pointer; }
+    .stat-card.stat-due::before { background: linear-gradient(90deg, #f97316, #fbbf24); }
     .stat-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.3); }
 
     .stat-icon {
@@ -151,6 +155,7 @@
     .stat-card.stat-amber  .stat-num { color: #fcd34d; }
     .stat-card.stat-purple .stat-num { color: #c084fc; }
     .stat-card.stat-green  .stat-num { color: #34d399; }
+    .stat-card.stat-due    .stat-num { color: #fdba74; }
 
     /* ── Toolbar ── */
     .toolbar {
@@ -425,7 +430,27 @@
       margin-bottom: 12px;
       opacity: 0.4;
     }
-    .empty p { font-size: 14px; margin-top: 6px; }
+    .empty p { font-size: 14px; margin-top: 6px; color: var(--text2); }
+    .empty strong { display: block; color: var(--text); font-size: 16px; margin-bottom: 4px; }
+    .empty.err strong { color: #fecaca; }
+
+    .due-banner {
+      background: rgba(245,158,11,0.14);
+      border: 1px solid rgba(251,191,36,0.5);
+      color: #fef3c7;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .due-banner h3 { font-size: 13px; font-weight: 700; color: #fde68a; }
+    .due-row {
+      display: flex; justify-content: space-between; gap: 12px; align-items: center;
+      padding: 8px 0; border-top: 1px solid rgba(251,191,36,0.25); margin-top: 8px;
+    }
+    .due-row button { padding: 5px 10px; }
+    .follow-overdue { color: #fecaca; font-weight: 700; }
+    .follow-today, .follow-soon { color: #fde68a; font-weight: 700; }
+    .field-hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text3); }
 
     /* ── Notes / Scratchpad ── */
     .notes-section-card {
@@ -672,9 +697,10 @@
         <div class="header-icon">📊</div>
         <div>
           <h1>Job Application Tracker</h1>
-          <div class="sub">Track applications, assessments, interviews &amp; offers — saved locally in this browser.</div>
+          <div class="sub">Company, role, date, status, and the day you should follow up. Saved in this browser.</div>
         </div>
       </div>
+      <button type="button" class="btn-gray" id="openProfile">Edit profile</button>
     </div>
 
     <!-- Key Metrics / Stats Row -->
@@ -695,9 +721,14 @@
         <div class="stat-num" id="statInterviews">0</div>
       </div>
       <div class="stat-card stat-green">
-        <div class="stat-icon">🎉</div>
+        <div class="stat-icon" aria-hidden="true">🎉</div>
         <div class="stat-label">Offers &amp; Counter</div>
         <div class="stat-num" id="statOffers">0</div>
+      </div>
+      <div class="stat-card stat-due" id="statDueCard" role="button" tabindex="0" title="Show follow-ups that are due">
+        <div class="stat-icon" aria-hidden="true">⏰</div>
+        <div class="stat-label">Follow-ups due</div>
+        <div class="stat-num" id="statDue">0</div>
       </div>
     </div>
 
@@ -716,6 +747,8 @@
       <span class="count-label"   id="countLabel"></span>
     </div>
 
+    <div id="dueBanner" class="due-banner" hidden></div>
+
     <!-- Applications Table -->
     <div class="table-wrap">
       <table id="appTable">
@@ -726,6 +759,7 @@
             <th>Job Title</th>
             <th>Job Link</th>
             <th>Status</th>
+            <th>Follow-up</th>
             <th>Extra Notes</th>
             <th style="text-align:right;">Actions</th>
           </tr>
@@ -785,9 +819,15 @@
               <input type="date" id="modalDate">
             </div>
           </div>
-          <div class="form-group">
-            <label for="modalStatus">Current Status</label>
-            <select id="modalStatus"></select>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="modalStatus">Current Status</label>
+              <select id="modalStatus"></select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="modalFollowUp">Follow-up <span class="field-hint">when to check back</span></label>
+              <input type="date" id="modalFollowUp">
+            </div>
           </div>
           <div class="form-group">
             <label for="modalNotes">Extra Notes / Details</label>
