@@ -73,3 +73,29 @@ JF_FIELDS.forEach((f) => (f.ac || []).forEach((a) => (JF_AC[a] = f.k)));
 const JF_EXPERIENCE_KEYS = ["expCompany", "expTitle", "expStartDate", "expEndDate", "expCurrently", "expDescription"];
 const JF_EDUCATION_KEYS  = ["college", "degree", "specialization", "eduStartDate", "eduEndDate", "cgpa"];
 const JF_CERT_KEYS       = ["certName", "certIssuer", "certUrl", "certYear"];
+
+// Shared by the popup and the profile page. extras: { resume, experiences, educations }.
+function jfCompleteness(profile, extras) {
+  profile = profile || {};
+  extras = extras || {};
+  var exps = extras.experiences || [];
+  var checks = [
+    { label: "Name", ok: !!(profile.firstName || profile.lastName || profile.fullName) },
+    { label: "Email", ok: !!String(profile.email || "").trim() },
+    { label: "Phone", ok: !!String(profile.phone || "").trim() },
+    { label: "Location", ok: !!(profile.city || profile.state || profile.country) },
+    { label: "A link", ok: !!(profile.linkedin || profile.github || profile.portfolio) },
+    { label: "Work", ok: !!(profile.jobTitle || profile.currentCompany || exps.length) },
+    { label: "Skills or summary", ok: !!(profile.skills || profile.summary) },
+    { label: "Resume file", ok: !!extras.resume }
+  ];
+  var missing = [];
+  var done = 0;
+  checks.forEach(function (c) { if (c.ok) done++; else missing.push(c.label); });
+  return {
+    done: done,
+    total: checks.length,
+    missing: missing,
+    ready: !!(checks[0].ok && checks[1].ok && checks[2].ok)
+  };
+}

@@ -204,20 +204,34 @@
     const ph = (el.placeholder || "").toLowerCase();
     return /^m+/.test(ph) ? `${m[2]}/${m[3]}/${m[1]}` : /^y+/.test(ph) ? `${m[1]}-${m[2]}-${m[3]}` : `${m[3]}/${m[2]}/${m[1]}`;
   }
-  function valueFor(k, p, el) {
+  function fieldLabel(k) {
+    if (k === "resume") return "Resume file";
+    const f = JF_FIELDS.find((x) => x.k === k);
+    if (!f) return k;
+    const cut = f.label.split("(")[0].split("?")[0].trim();
+    return cut || f.label;
+  }
+  function resolveField(k, p, el, allowDraft) {
     let v = p[k];
+    if (typeof v === "string") v = v.trim();
     const parts = (p.fullName || "").trim().split(/\s+/);
     if (!v && k === "fullName") v = [p.firstName, p.lastName].filter(Boolean).join(" ");
     if (!v && k === "firstName" && parts[0]) v = parts[0];
     if (!v && k === "lastName" && parts.length > 1) v = parts.slice(1).join(" ");
-    if (!v) return "";
+    let source = v ? "saved" : "empty";
+    if (!v && allowDraft && typeof jfDraftAnswer === "function") {
+      const d = jfDraftAnswer(k, p, companyGuess(), jobTitleGuess());
+      if (d && d.text) { v = d.text; source = d.source === "saved" ? "saved" : "template"; }
+    }
+    if (!v) return { value: "", source: "empty" };
     v = String(v);
     if (k === "dob") v = dateFor(v, el);
-    if (/\{company\}/.test(v)) v = v.replace(/\{company\}/g, companyGuess() || "your company");
-    if (el.type === "number") { const n = parseFloat(v); if (isNaN(n)) return ""; v = String(n); }
-    const ml = el.maxLength > 0 ? el.maxLength : 0;
+    if (typeof jfApplyPlaceholders === "function") v = jfApplyPlaceholders(v, p, companyGuess(), jobTitleGuess());
+    else if (/\{company\}/.test(v)) v = v.replace(/\{company\}/g, companyGuess() || "your company");
+    if (el && el.type === "number") { const n = parseFloat(v); if (isNaN(n)) return { value: "", source: "empty" }; v = String(n); }
+    const ml = el && el.maxLength > 0 ? el.maxLength : 0;
     if (ml && v.length > ml) v = (k === "phone" || k === "altPhone") ? v.replace(/\D/g, "").slice(-ml) : v.slice(0, ml);
-    return v;
+    return { value: v, source };
   }
 
   // ---------- "Already filled?" ----------
@@ -375,44 +389,44 @@
     }
     if (educations && educations.length > 0) {
       const e = educations[0];
-      if (!merged.college        && e.college)        merged.college        = e.college;
-      if (!merged.degree         && e.degree)         merged.degree         = e.degree;
-      if (!merged.specialization && e.specialization) merged.specialization = e.specialization;
-      if (!merged.eduStartDate   && e.eduStartDate)   merged.eduStartDate   = e.eduStartDate;
-      if (!merged.eduEndDate     && e.eduEndDate)     merged.eduEndDate     = e.eduEndDate;
-      if (!merged.cgpa           && e.cgpa)           merged.cgpa           = e.cgpa;
-      if (!merged.graduationYear && e.eduEndDate)     merged.graduationYear = e.eduEndDate.split("-")[0] || "";
+      ["college", "degree", "specialization", "eduStartDate", "eduEndDate", "cgpa"].forEach((k) => {
+        if (e[k]) merged[k] = e[k];
+        else if (Object.prototype.hasOwnProperty.call(e, k)) delete merged[k];
+      });
+      if (e.eduEndDate) merged.graduationYear = String(e.eduEndDate).split("-")[0] || "";
     }
     if (certifications && certifications.length > 0) {
       const c = certifications[0];
-      if (!merged.certName   && c.certName)   merged.certName   = c.certName;
-      if (!merged.certIssuer && c.certIssuer) merged.certIssuer = c.certIssuer;
-      if (!merged.certUrl    && c.certUrl)    merged.certUrl    = c.certUrl;
-      if (!merged.certYear   && c.certYear)   merged.certYear   = c.certYear;
+      ["certName", "certIssuer", "certUrl", "certYear"].forEach((k) => {
+        if (c[k]) merged[k] = c[k];
+        else if (Object.prototype.hasOwnProperty.call(c, k)) delete merged[k];
+      });
     }
     return merged;
   }
 
-  function plan(profile, resume) {
+  function plan(profile, resume, allowDraft) {
     const items = [], unmatched = [], seenRadio = new Set();
     for (const el of deepAll(document, SEL)) {
       const kind = kindOf(el);
       if (el.disabled || el.readOnly || el.dataset.jfDone) continue;
       if (el.tagName === "INPUT" && SKIP_TYPES.has(el.type)) continue;
-      if (el.closest && el.closest('[role="search"]')) continue;
+      if (el.closest && (el.closest('[role="search"]') || el.closest("#__jf_thankyou_card") || el.closest("#__jf_toast"))) continue;
       if (BAD.test(norm(split((el.name || "") + " " + (el.id || ""))))) continue;
       if (kind !== "radio" && kind !== "file" && !visible(el)) continue;
       if (kind === "radio") { const key = (el.name || "") + "|" + (el.form ? [...document.forms].indexOf(el.form) : -1); if (seenRadio.has(key)) continue; seenRadio.add(key); }
       if (filled(el, kind)) continue;
       const srcs = sources(el);
       if (kind === "file") {
-        if (resume && srcs.some((s) => /resume|\bcv\b|curriculum/.test(s.t)) && !srcs.some((s) => /cover\s*letter/.test(s.t) && !/resume|\bcv\b/.test(s.t))) items.push({ el, kind, key: "resume" });
+        if (resume && srcs.some((s) => /resume|\bcv\b|curriculum/.test(s.t)) && !srcs.some((s) => /cover\s*letter/.test(s.t) && !/resume|\bcv\b/.test(s.t))) {
+          items.push({ el, kind, key: "resume", value: resume.name || "Resume", source: "saved", empty: false });
+        }
         continue;
       }
       const key = matchKey(el, kind, srcs);
       if (!key) { if (kind === "text" || kind === "rich") unmatched.push((srcs[0] ? srcs[0].t : el.name || el.id || "?").slice(0, 60)); continue; }
-      const value = key === "resume" ? "x" : valueFor(key, profile, el);
-      items.push({ el, kind, key, value, empty: !value });
+      const resolved = resolveField(key, profile, el, !!allowDraft);
+      items.push({ el, kind, key, value: resolved.value, source: resolved.source, empty: !resolved.value });
     }
     return { items, unmatched };
   }
@@ -453,11 +467,11 @@
       </div>
       <div style="margin-bottom:8px">
         <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px">Company</label>
-        <input id="__jf_card_company" type="text" value="${company || ''}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font:inherit;font-size:12px">
+        <input id="__jf_card_company" type="text" value="${escHtml(company || "")}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font:inherit;font-size:12px">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px">Job Title / Role</label>
-        <input id="__jf_card_title" type="text" value="${jobTitle || ''}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font:inherit;font-size:12px">
+        <input id="__jf_card_title" type="text" value="${escHtml(jobTitle || "")}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font:inherit;font-size:12px">
       </div>
       <div style="display:flex;gap:8px">
         <button id="__jf_card_add" style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px;font-weight:600;cursor:pointer;font-size:12px">
@@ -481,7 +495,7 @@
       const t = document.getElementById("__jf_card_title").value.trim();
       chrome.runtime.sendMessage({
         type: "track_application",
-        tracking: { company: c || "Unknown Company", jobTitle: t || "Job Application", url: location.href, date: new Date().toISOString(), status: "Applied" }
+        tracking: { company: c || "Unknown Company", jobTitle: t || "Job Application", url: location.href, date: new Date().toISOString(), status: "Applied", followUp: "" }
       }).then(() => {
         card.innerHTML = `
           <div style="text-align:center;padding:12px 0;color:#166534;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px">
@@ -493,6 +507,10 @@
         card.remove();
       });
     };
+  }
+
+  function escHtml(s) {
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   function detectThankYouPage() {
@@ -563,20 +581,61 @@
   snapshotPlatformFilled();
 
   const _origPlan = plan;
-  function planSafe(profile, resume) {
-    const result = _origPlan(profile, resume);
+  function planSafe(profile, resume, allowDraft) {
+    const result = _origPlan(profile, resume, allowDraft);
     const safe = result.items.filter((it) => !_platformFilled.has(it.el));
     const skippedByPlatform = result.items.length - safe.length;
     return { items: safe, unmatched: result.unmatched, skippedByPlatform };
   }
 
+  async function loadProfileBundle() {
+    const d = await chrome.storage.local.get(["profile", "resume", "experiences", "educations", "certifications"]);
+    const profile = flattenProfile(d.profile || {}, d.experiences, d.educations, d.certifications);
+    const hasProfile = Object.values(profile).some(Boolean) || !!(d.resume);
+    return { profile, resume: d.resume || null, hasProfile };
+  }
+
+  function previewFrom(profile, resume, hasProfile) {
+    const planned = planSafe(profile || {}, resume, true);
+    const fields = [];
+    const missing = [];
+    planned.items.forEach((it) => {
+      if (it.empty) { missing.push(fieldLabel(it.key)); return; }
+      fields.push({
+        key: it.key,
+        label: fieldLabel(it.key),
+        value: it.key === "resume" ? ((resume && resume.name) || "Resume") : String(it.value || "").slice(0, 500),
+        source: it.source || "saved"
+      });
+    });
+    return {
+      company: companyGuess(),
+      jobTitle: jobTitleGuess(),
+      url: location.href,
+      hasProfile: !!hasProfile,
+      fields,
+      missing: [...new Set(missing)],
+      unmatched: (planned.unmatched || []).slice(0, 8)
+    };
+  }
+
+  async function emitPreview() {
+    try {
+      const bundle = await loadProfileBundle();
+      const preview = previewFrom(bundle.profile, bundle.resume, bundle.hasProfile);
+      chrome.runtime.sendMessage({ type: "preview_report", preview }).catch(() => {});
+      return preview;
+    } catch (e) {}
+  }
+
   async function fillAllSafe(profile, resume, opts) {
     opts = opts || {};
-    const { items, unmatched, skippedByPlatform } = planSafe(profile || {}, resume);
+    const allowDraft = !opts.auto;
+    const { items, unmatched, skippedByPlatform } = planSafe(profile || {}, resume, allowDraft);
     const real = items.filter((i) => !i.empty);
     const report = {
       matched: items.length, filled: 0, unmatched, skippedByPlatform: skippedByPlatform || 0,
-      missing: [...new Set(items.filter((i) => i.empty).map((i) => i.key))]
+      missing: [...new Set(items.filter((i) => i.empty).map((i) => fieldLabel(i.key)))]
     };
     if (opts.auto && real.length < 3) return Object.assign(report, { skipped: true });
     for (const it of real) {
@@ -609,20 +668,21 @@
       const onAngular = isAngularLike();
       let msg = "";
       if (report.filled > 0) {
-        msg += `<b>${onWorkday || onAngular ? "⚡" : "✅"} Job Filler:</b> Filled <b>${report.filled}</b> field(s) — highlighted in green.`;
+        msg += `<b>Filled ${report.filled} field${report.filled === 1 ? "" : "s"}.</b> They're outlined in green. Review them, then submit the form yourself.`;
       }
       if (report.skippedByPlatform > 0) {
-        msg += `${msg ? "<br>" : ""}<span style="font-size:12px;opacity:.9">⏭ Preserved <b>${report.skippedByPlatform}</b> field(s) parsed by the platform.</span>`;
+        msg += `${msg ? "<br>" : ""}<span style="font-size:12px;opacity:.9">Left ${report.skippedByPlatform} field${report.skippedByPlatform === 1 ? "" : "s"} that the site had already filled.</span>`;
       }
       if ((onWorkday || onAngular) && report.filled > 0) {
-        msg += `<br><span style="font-size:12px;opacity:.9">This site uses strict validation — <b>click inside each green field, then Tab out</b> to confirm before submitting. Tap to dismiss.</span>`;
+        msg += `<br><span style="font-size:12px;opacity:.9">This site checks each field strictly. Click a green field and tab out of it before you submit.</span>`;
       }
       const trackingPayload = {
         company: companyGuess(),
-        jobTitle: (profile && profile.jobTitle) || jobTitleGuess(),
+        jobTitle: jobTitleGuess(),
         url: location.href,
         date: new Date().toISOString(),
-        status: "Applied"
+        status: "Applied",
+        followUp: ""
       };
       if (msg) showToast(msg, onWorkday || onAngular, report.filled > 0 ? trackingPayload : null);
     }
@@ -646,25 +706,30 @@
         snapshotPlatformFilled();
       }
 
-      const d = await chrome.storage.local.get(["profile", "resume", "experiences", "educations", "certifications"]);
-      if (!d.profile) return;
-      const merged = flattenProfile(d.profile, d.experiences, d.educations, d.certifications);
-      const r = await fillAllSafe(merged, d.resume, { auto });
-      if (r.matched || r.filled) {
-        const company = companyGuess();
-        const jobTitle = merged.jobTitle || jobTitleGuess();
-        const trackingPayload = { company, jobTitle, url: location.href, date: new Date().toISOString(), status: "Applied" };
-
-        // Send report to popup (if popup is currently open)
-        if (!auto) {
-          chrome.runtime.sendMessage({
-            type: "report",
-            report: r,
-            tracking: trackingPayload
-          }).catch(() => {});
-        }
-
-        // NOTE: Do NOT auto-persist to tracker. Tracking happens only when user clicks 'Add to Tracker'.
+      const bundle = await loadProfileBundle();
+      if (auto && !bundle.hasProfile) return;
+      const r = await fillAllSafe(bundle.profile, bundle.resume, { auto });
+      r.hasProfile = bundle.hasProfile;
+      if (!auto) {
+        chrome.runtime.sendMessage({
+          type: "report",
+          report: r,
+          tracking: {
+            company: companyGuess(),
+            jobTitle: jobTitleGuess(),
+            url: location.href,
+            date: new Date().toISOString(),
+            status: "Applied",
+            followUp: ""
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      if (!auto) {
+        chrome.runtime.sendMessage({
+          type: "report",
+          report: { filled: 0, matched: 0, unmatched: [], missing: [], hasProfile: true, failed: true }
+        }).catch(() => {});
       }
     } finally { busy = false; }
   }
@@ -673,6 +738,13 @@
     if (m && m.type === "fill") {
       snapshotPlatformFilled();
       run(false);
+      try { sendResponse({ started: true }); } catch (e) {}
+      return;
+    }
+    if (m && m.type === "preview") {
+      emitPreview();
+      try { sendResponse({ started: true }); } catch (e) {}
+      return;
     }
     if (m && m.type === "get_page_info") {
       sendResponse({
